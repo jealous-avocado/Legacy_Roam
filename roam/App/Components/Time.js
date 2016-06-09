@@ -3,6 +3,7 @@ import { SegmentedControls } from 'react-native-radio-buttons';
 import Geolocation from './Geolocation';
 // var Geolocation = require('./Geolocation');
 var Confirmation = require('./Confirmation');
+var iBeacon = require('./iBeacon');
 var Separator = require('./Helpers/Separator');
 var styles = require('./Helpers/styles');
 
@@ -22,22 +23,39 @@ class Time extends Component {
   constructor(props) {
     super(props);
     this.state = {
-      selectedOption: '1 hour'
+      selectedTime: '1 hour', 
+      selectedGroup: 'Solo'
     };
   }
-  handleSelected(choice) {
+  handleSelectedTime(choice) {
     this.setState({
-      selectedOption: choice
+      selectedTime: choice
+    });
+  }
+
+  handleSelectedGroup(choice) {
+    this.setState({
+      selectedGroup: choice
     });
   }
 
   handleSubmit() {
-    console.log('Sending ROAM request!', coordinates);
+    console.log('Sending ROAM request!');
     this.props.navigator.push({
       title: 'Confirmation',
       email: this.props.navigator.navigationContext._currentRoute.email,
+      selectedTime: this.state.selectedTime,
+      selectedGroup: this.state.selectedGroup,
       component: Confirmation
     });
+  }
+
+  iBeacon() {
+    this.props.navigator.push({
+      title: 'iBeacon', 
+      email: this.props.navigator.navigationContext._currentRoute.email, 
+      component: iBeacon
+    })
   }
 
   render () {
@@ -47,6 +65,12 @@ class Time extends Component {
       '4 hours',
       'Anytime'
     ];
+
+    const groupOptions = [
+      'Solo', 
+      'Group'
+    ];
+
     return (
       <Image style={styles.backgroundImage}
       source={require('../../imgs/uni.jpg')} >
@@ -59,12 +83,27 @@ class Time extends Component {
           options={options}
           allowFontScaling={false}
           fontWeight={'bold'}
-          onSelection={this.handleSelected.bind(this)}
-          selectedOption={this.state.selectedOption} />
+          onSelection={this.handleSelectedTime.bind(this)}
+          selectedOption={this.state.selectedTime} />
+        <SegmentedControls
+        tint={'#ff0066'}
+        selectedTint={'white'}
+        backTint={'white'}
+        options={groupOptions}
+        allowFontScaling={false}
+        fontWeight={'bold'}
+        onSelection={this.handleSelectedGroup.bind(this)}
+        selectedOption={this.state.selectedGroup} />
         <TouchableHighlight
           style={styles.button}
           onPress={this.handleSubmit.bind(this)} >
             <Text style={styles.buttonText}> Roam! </Text>
+        </TouchableHighlight>
+
+        <TouchableHighlight
+          style={styles.button}
+          onPress={this.iBeacon.bind(this)}>
+          <Text>iBeacon</Text>
         </TouchableHighlight>
       </Image>
     );

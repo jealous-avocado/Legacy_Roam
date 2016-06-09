@@ -37,6 +37,9 @@ app.get('/', function(req, res){
 
 //Post to server on signup page
 app.post('/signup', function(req, res){
+
+  console.log('HELLOOOOOOO');
+
   var data = req.body;
 
   //Check database to see if incoming email on signup already exists
@@ -98,11 +101,21 @@ app.post('/roam', function(req, res) {
 
 	var dateMS = Date.now();
   var userEmail = req.body.userEmail;
+  var groupSize = req.body.groupSize;
+  var Roamers = 0;
+  switch (groupSize) {
+    case 'Solo':
+      Roamers = 2;
+      break;
+    case 'Group':
+      Roamers = 6;
+      break;
+  }
   var coords = boundingBoxGenerator(req); //bounding box coordinates
   var times = roamOffGenerator(req); //time until roam ends
-
+  console.log(Roamers, 'roamers');
   //Checks to make sure if there is an existing pending roam within similar location by a different user
-	apoc.query('MATCH (n:Roam) WHERE n.creatorRoamEnd > %currentDate%  AND n.status = "Pending" AND n.creatorLatitude < %maxLat% AND n.creatorLatitude > %minLat% AND n.creatorLongitude < %maxLong% AND n.creatorLongitude > %minLong% AND n.creatorEmail <> "%userEmail%" RETURN n', {currentDate:dateMS, maxLat: coords.maxLat, minLat: coords.minLat, maxLong: coords.maxLong, minLong: coords.minLong, userEmail: userEmail}).exec().then(function(matchResults) {
+  apoc.query('MATCH (n:Roam) WHERE n.creatorRoamEnd > %currentDate% AND n.creatorLatitude < %maxLat% AND n.creatorLatitude > %minLat% AND n.creatorLongitude < %maxLong% AND n.creatorLongitude > %minLong% AND n.creatorEmail <> "%userEmail%" AND n.numRoamers < %Roamers% AND n.maxRoamers = %Roamers% RETURN n', {currentDate:dateMS, maxLat: coords.maxLat, minLat: coords.minLat, maxLong: coords.maxLong, minLong: coords.minLong, userEmail: userEmail, Roamers: Roamers, maxRoamers: Roamers}).exec().then(function(matchResults) {
     
     //if no match found create a pending roam node
     if (matchResults[0].data.length === 0) {
@@ -122,7 +135,7 @@ app.post('/roam', function(req, res) {
         var venueAddress = venue.location.display_address.join(' ');
 
         //Create a roam node if it doesn't exist
-        apoc.query('CREATE (m:Roam {creatorEmail: "%userEmail%", creatorLatitude: %userLatitude%, creatorLongitude: %userLongitude%, creatorRoamStart: %startRoam%, creatorRoamEnd: %roamOffAfter%, status: "Pending", venueName: "%venueName%", venueAddress: "%venueAddress%"})', { email: userEmail, userEmail: userEmail, userLatitude: coords.userLatitude, userLongitude: coords.userLongitude,
+        apoc.query('CREATE (m:Roam {creatorEmail: "%userEmail%", creatorLatitude: %userLatitude%, creatorLongitude: %userLongitude%, creatorRoamStart: %startRoam%, creatorRoamEnd: %roamOffAfter%, numRoamers: 1, maxRoamers: %Roamers%, venueName: "%venueName%", venueAddress: "%venueAddress%"})', { Roamers: Roamers, email: userEmail, userEmail: userEmail, userLatitude: coords.userLatitude, userLongitude: coords.userLongitude,
       startRoam: times.startRoam, roamOffAfter: times.roamOffAfter, venueName: venueName, venueAddress: venueAddress }).exec().then(function(queryRes) {
 
           // creates the relationship between creator of roam node and the roam node
@@ -140,7 +153,7 @@ app.post('/roam', function(req, res) {
       var id = matchResults[0].data[0].meta[0].id;
 
       //Grabs roam node between similar location, and creates the relationship between node and user
-      apoc.query('MATCH (n:User {email:"%email%"}), (m:Roam) WHERE id(m) = %id% SET m.status="Active" CREATE (n)-[:CREATED]->(m) RETURN m', {email:userEmail, id:id} ).exec().then(function(roamRes) {
+      apoc.query('MATCH (n:User {email:"%email%"}), (m:Roam) WHERE id(m) = %id% SET m.numRoamers=m.numRoamers+1 CREATE (n)-[:CREATED]->(m) RETURN m', {email:userEmail, id:id} ).exec().then(function(roamRes) {
           console.log('Relationship created b/w Users created', roamRes[0].data[0].row[0]);
           var roamInfo = roamRes[0].data[0].row[0];
 
@@ -164,9 +177,11 @@ app.post('/roam', function(req, res) {
 	        });
 
           res.send("You have been matched!"); 
-        });
+        })
+        .catch(e => console.log('error: ', e));
     }
-	});
+	})
+  .catch(e => console.log('error', e));
 });
 
 //Cancellation of roam; only the creator has cancellation abilities

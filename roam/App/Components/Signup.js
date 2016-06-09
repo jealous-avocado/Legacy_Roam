@@ -61,12 +61,10 @@ class SignUp extends Component {
           email: this.state.email,
         })
       })
-      // .then((res) => {
-      //   return res.json();
-      // })
       .then((res) => {
-        res = res.json();
-        console.log('RESPONSE FROM SERVER ON SIGNUP PAGE', res);
+        return res.json();
+      })
+      .then((res) => {
         if (res.message === 'User created') {
           this.props.navigator.push({
             title: 'Select Time',
