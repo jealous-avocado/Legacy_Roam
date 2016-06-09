@@ -1,9 +1,13 @@
 import React, { Component } from 'react';
-
-// var Interests = require('./Interests');
 var Time = require('./Time');
-
 var styles = require('./Helpers/styles');
+const FBSDK = require('react-native-fbsdk');
+const {
+  LoginButton,
+  AccessToken,
+  GraphRequest,
+  GraphRequestManager
+} = FBSDK;
 
 import {
   View,
@@ -30,8 +34,25 @@ class SignUp extends Component {
     };
   }
 
+  getUser(token) {
+    fetch('https://graph.facebook.com/me?fields=name,email,picture.type(large)&access_token=' + token) 
+      .then((response) => {
+        return response.json();
+      })
+      .then((data) => {
+        var name = data.name;
+        var email = data.email;
+        var id = data.id;
+        var picture = data.picture.data.url;
+        console.log(data);
+      })
+      .catch((error) => { 
+         console.log(error);
+      });
+  }
+
+
   handleSubmit() {
-    console.log(this.state);
     this.setState({
       isLoading: true
     });
@@ -158,6 +179,25 @@ class SignUp extends Component {
           color="#111"
           size="large"></ActivityIndicatorIOS>
         {showErr}
+
+        <LoginButton
+          readPermissions={["email","user_friends", "public_profile"]}
+          onLoginFinished={
+            (error, result) => {
+              if (error) {
+                alert("login has error: " + result.error);
+              } else if (result.isCancelled) {
+                alert("login is cancelled.");
+              } else {
+                AccessToken.getCurrentAccessToken().then(
+                  (data) => {
+                    {this.getUser.bind(this, data.accessToken.toString())()};
+                  }
+                )
+              }
+            }
+          }
+          onLogoutFinished={() => alert("logout.")}/>
       </Image>
     )
   }
