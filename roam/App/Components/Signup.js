@@ -40,15 +40,43 @@ class SignUp extends Component {
         return response.json();
       })
       .then((data) => {
-        var name = data.name;
+        console.log(data);
+        var firstName = data.name.split(" ")[0];
+        var lastName = data.name.split(" ")[1];
         var email = data.email;
         var id = data.id;
         var picture = data.picture.data.url;
-        console.log(data);
+        fetch('http://localhost:3000/signup', {
+          method: 'POST',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            firstName: firstName,
+            lastName: lastName,
+            fb: true,
+            email: email,
+            password: 'null',
+            picture: picture
+          })
+        })
+        .then((res) => {
+          console.log('firstName is ', firstName);
+          res.json();
+          this.props.navigator.push({
+            title: firstName + ' -- when are you free?',
+            email: email,
+            component: Time
+          });
+        })
+        .catch((error) => {
+          console.log('Error in facebook post to server', error);
+        })
       })
-      .catch((error) => { 
-         console.log(error);
-      });
+    .catch((error) => { 
+       console.log("Error in facebook get user infor", error);
+    });
   }
 
 
@@ -181,6 +209,7 @@ class SignUp extends Component {
         {showErr}
 
         <LoginButton
+          style={styles.button}
           readPermissions={["email","user_friends", "public_profile"]}
           onLoginFinished={
             (error, result) => {

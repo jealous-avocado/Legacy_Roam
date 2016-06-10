@@ -4,6 +4,13 @@ import React, { Component } from 'react';
 var SignUp = require('./Signup');
 var Time = require('./Time');
 var styles = require('./Helpers/styles');
+const FBSDK = require('react-native-fbsdk');
+const {
+  LoginButton,
+  AccessToken,
+  GraphRequest,
+  GraphRequestManager
+} = FBSDK;
 
 import {
   Image,
@@ -25,6 +32,50 @@ class Main extends Component {
       error: false,
       errorMessage: ''
     };
+  }
+
+  getUser(token) {
+    fetch('https://graph.facebook.com/me?fields=name,email,picture.type(large)&access_token=' + token) 
+      .then((response) => {
+        return response.json();
+      })
+      .then((data) => {
+        console.log(data);
+        var firstName = data.name.split(" ")[0];
+        var lastName = data.name.split(" ")[1];
+        var email = data.email;
+        var id = data.id;
+        var picture = data.picture.data.url;
+        fetch('http://localhost:3000/signup', {
+          method: 'POST',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            firstName: firstName,
+            lastName: lastName,
+            fb: true,
+            email: email,
+            password: null,
+            picture: picture
+          })
+        })
+        .then((res) => {
+          res.json();
+          this.props.navigator.push({
+            title: 'When are you free?',
+            email: email,
+            component: Time
+          });
+        })
+        .catch((error) => {
+          console.log('Error in facebook post to server', error);
+        })
+      })
+    .catch((error) => { 
+       console.log("Error in facebook get user infor", error);
+    });
   }
 
   handleEmail(event) {
@@ -137,6 +188,25 @@ class Main extends Component {
           underlayColor="white" >
             <Text style={styles.buttonText}> Sign In </Text>
         </TouchableHighlight>
+        <LoginButton
+          style={styles.button}
+          readPermissions={["email","user_friends", "public_profile"]}
+          onLoginFinished={
+            (error, result) => {
+              if (error) {
+                alert("login has error: " + result.error);
+              } else if (result.isCancelled) {
+                alert("login is cancelled.");
+              } else {
+                AccessToken.getCurrentAccessToken().then(
+                  (data) => {
+                    {this.getUser.bind(this, data.accessToken.toString())()};
+                  }
+                )
+              }
+            }
+          }
+          onLogoutFinished={() => alert("logout.")}/>
         <TouchableHighlight
           // style={styles.button}
           onPress={this.handleSignUp.bind(this)}
